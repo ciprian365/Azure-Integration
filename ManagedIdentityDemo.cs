@@ -30,15 +30,18 @@ namespace ManagedIdentityDemo
             _logger.LogInformation("Message Body: {body}", message.Body);
             _logger.LogInformation("Message Content-Type: {contentType}", message.ContentType);
 
-            var managedIdentity = new DefaultAzureCredential();
-            var environment = Environment.GetEnvironmentVariable("dataverse_url");
+            DefaultAzureCredential managedIdentity = new DefaultAzureCredential();
+            string? environment = Environment.GetEnvironmentVariable("dataverse_url");
 
             _logger.LogInformation("Dataverse URL: {contentType}",environment);
 
             Account accountFromPayload = JsonSerializer.Deserialize<Account>(message.Body.ToString());
 
-            IOrganizationService serviceClient = new ServiceClient(tokenProviderFunction: async u => (await managedIdentity.GetTokenAsync(
-                new TokenRequestContext(new[] { $"{environment}/.default" }))).Token, instanceUrl: new Uri(environment));
+            string token = managedIdentity.GetTokenAsync(new TokenRequestContext(new[] { $"{environment}/.default" })).Result.Token;
+
+            DataverseClient dataverseClient = new DataverseClient(token, environment);
+
+            IOrganizationService serviceClient = dataverseClient.getOrganizationService();
 
             Entity accountToCreate = new Entity("account");
             accountToCreate["name"] = accountFromPayload?.AccountName;
